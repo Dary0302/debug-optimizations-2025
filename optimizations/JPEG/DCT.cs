@@ -1,69 +1,103 @@
 ﻿using System;
-using JPEG.Utilities;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace JPEG;
 
 public class DCT
 {
-	public static double[,] DCT2D(double[,] input)
-	{
-		var height = input.GetLength(0);
-		var width = input.GetLength(1);
-		var coeffs = new double[width, height];
+    public static double[,] DCT2D(double[,] channel, double[,] cosTable, int blockSize)
+    {
+        var channelFreqs = new double[blockSize, blockSize];
 
-		MathEx.LoopByTwoVariables(
-			0, width,
-			0, height,
-			(u, v) =>
-			{
-				var sum = MathEx
-					.SumByTwoVariables(
-						0, width,
-						0, height,
-						(x, y) => BasisFunction(input[x, y], u, v, x, y, height, width));
+        for (var u = 0; u < blockSize; u++)
+        {
+            for (var v = 0; v < blockSize; v++)
+            {
+                double sum = 0;
 
-				coeffs[u, v] = sum * Beta(height, width) * Alpha(u) * Alpha(v);
-			});
+                for (var x = 0; x < blockSize; x++)
+                {
+                    for (var y = 0; y < blockSize; y++)
+                    {
+                        var pixel = channel[x, y];
+                        sum += pixel *
+                            cosTable[x, u] *
+                            cosTable[y, v];
+                    }
+                }
 
-		return coeffs;
-	}
+                var alphaU = u == 0 ? 1.0 / Math.Sqrt(2) : 1.0;
+                var alphaV = v == 0 ? 1.0 / Math.Sqrt(2) : 1.0;
 
-	public static void IDCT2D(double[,] coeffs, double[,] output)
-	{
-		for (var x = 0; x < coeffs.GetLength(1); x++)
-		{
-			for (var y = 0; y < coeffs.GetLength(0); y++)
-			{
-				var sum = MathEx
-					.SumByTwoVariables(
-						0, coeffs.GetLength(1),
-						0, coeffs.GetLength(0),
-						(u, v) =>
-							BasisFunction(coeffs[u, v], u, v, x, y, coeffs.GetLength(0), coeffs.GetLength(1)) *
-							Alpha(u) * Alpha(v));
+                channelFreqs[u, v] = 0.25 * alphaU * alphaV * sum; // 0.25 это (1/4), сокращает коэффициенты сразу
+            }
+        }
 
-				output[x, y] = sum * Beta(coeffs.GetLength(0), coeffs.GetLength(1));
-			}
-		}
-	}
+        return channelFreqs;
+    }
 
-	public static double BasisFunction(double a, double u, double v, double x, double y, int height, int width)
-	{
-		var b = Math.Cos(((2d * x + 1d) * u * Math.PI) / (2 * width));
-		var c = Math.Cos(((2d * y + 1d) * v * Math.PI) / (2 * height));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static double Alpha(int u) => (u == 0) ? 1 / Math.Sqrt(2) : 1;
+    
+    public static double[,] PrecomputeCosTable(int size)
+    {
+        var table = new double[size, size];
+        for (var x = 0; x < size; x++)
+        {
+            for (var u = 0; u < size; u++)
+            {
+                table[x, u] = Math.Cos(((2.0 * x + 1.0) * u * Math.PI) / (2.0 * size));
+            }
+        }
+        return table;
+    }
 
-		return a * b * c;
-	}
+    public static void PDCT2D(double[,] input, double[,] output, double[,] cosTable, int blockSize)
+    {
+        var width = input.GetLength(0);
+        var height = input.GetLength(1);
 
-	private static double Alpha(int u)
-	{
-		if (u == 0)
-			return 1 / Math.Sqrt(2);
-		return 1;
-	}
+        Parallel.For(0, width / blockSize, blockX =>
+        {
+            for (var blockY = 0; blockY < height / blockSize; blockY++)
+            {
+                ProcessBlock(input, output, blockX * blockSize, blockY * blockSize, blockSize, cosTable);
+            }
+        });
+    }
 
-	private static double Beta(int height, int width)
-	{
-		return 1d / width + 1d / height;
-	}
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ProcessBlock(
+        double[,] input,
+        double[,] output,
+        int offsetX,
+        int offsetY,
+        int blockSize,
+        double[,] cosTable)
+    {
+        var beta = 1.0 / blockSize + 1.0 / blockSize;
+
+        for (var u = 0; u < blockSize; u++)
+        {
+            var alphaU = Alpha(u);
+            for (var v = 0; v < blockSize; v++)
+            {
+                var alphaV = Alpha(v);
+
+                var sum = 0d;
+                for (var x = 0; x < blockSize; x++)
+                {
+                    for (var y = 0; y < blockSize; y++)
+                    {
+                        sum += input[offsetX + x, offsetY + y] *
+                            cosTable[x, u] *
+                            cosTable[y, v];
+                    }
+                }
+
+                output[offsetX + u, offsetY + v] = sum * beta * alphaU * alphaV;
+            }
+        }
+    }
 }

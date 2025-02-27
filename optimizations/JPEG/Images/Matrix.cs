@@ -15,8 +15,8 @@ class Matrix
 
 		Pixels = new Pixel[height, width];
 		for (var i = 0; i < height; ++i)
-		for (var j = 0; j < width; ++j)
-			Pixels[i, j] = new Pixel(0, 0, 0, PixelFormat.RGB);
+            for (var j = 0; j < width; ++j)
+                Pixels[i, j] = new Pixel(0, 0, 0, PixelFormat.RGB);
 	}
 
 	public static explicit operator Matrix(Bitmap bmp)

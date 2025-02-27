@@ -11,6 +11,7 @@ namespace JPEG.Processor;
 public class JpegProcessor : IJpegProcessor
 {
 	public static readonly JpegProcessor Init = new();
+    private static readonly double[,] CosTable = DCT.PrecomputeCosTable(DCTSize);
 	public const int CompressionQuality = 70;
 	private const int DCTSize = 8;
 
@@ -44,7 +45,7 @@ public class JpegProcessor : IJpegProcessor
 				{
 					var subMatrix = GetSubMatrix(matrix, y, DCTSize, x, DCTSize, selector);
 					ShiftMatrixValues(subMatrix, -128);
-					var channelFreqs = DCT.DCT2D(subMatrix);
+					var channelFreqs = DCT.DCT2D(subMatrix, CosTable, DCTSize);
 					var quantizedFreqs = Quantize(channelFreqs, quality);
 					var quantizedBytes = ZigZagScan(quantizedFreqs);
 					allQuantizedBytes.AddRange(quantizedBytes);
@@ -82,7 +83,8 @@ public class JpegProcessor : IJpegProcessor
 						allQuantizedBytes.ReadAsync(quantizedBytes, 0, quantizedBytes.Length).Wait();
 						var quantizedFreqs = ZigZagUnScan(quantizedBytes);
 						var channelFreqs = DeQuantize(quantizedFreqs, image.Quality);
-						DCT.IDCT2D(channelFreqs, channel);
+
+						DCT.PDCT2D(channelFreqs, channel, CosTable, DCTSize);
 						ShiftMatrixValues(channel, 128);
 					}
 
