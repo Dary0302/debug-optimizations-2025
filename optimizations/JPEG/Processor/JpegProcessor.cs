@@ -223,14 +223,14 @@ public class JpegProcessor : IJpegProcessor
 		return result;
 	}
 
-	private static int[,] GetQuantizationMatrix(int quality)
+	private static uint[,] GetQuantizationMatrix(int quality)
 	{
 		if (quality < 1 || quality > 99)
 			throw new ArgumentException("quality must be in [1,99] interval");
 
-		var multiplier = quality < 50 ? 5000 / quality : 200 - 2 * quality;
+		var multiplier = (uint)(quality < 50 ? 5000 / quality : 200 - 2 * quality);
 
-		var result = new[,]
+		var result = new uint[,]
 		{
 			{ 16, 11, 10, 16, 24, 40, 51, 61 },
 			{ 12, 12, 14, 19, 26, 58, 60, 55 },
@@ -242,9 +242,9 @@ public class JpegProcessor : IJpegProcessor
 			{ 72, 92, 95, 98, 112, 100, 103, 99 }
 		};
 
-		for (int y = 0; y < result.GetLength(0); y++)
+		for (var y = 0; y < result.GetLength(0); y++)
 		{
-			for (int x = 0; x < result.GetLength(1); x++)
+			for (var x = 0; x < result.GetLength(1); x++)
 			{
 				result[y, x] = (multiplier * result[y, x] + 50) / 100;
 			}

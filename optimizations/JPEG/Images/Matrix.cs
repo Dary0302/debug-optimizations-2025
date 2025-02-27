@@ -24,7 +24,7 @@ class Matrix
 		var height = bmp.Height - bmp.Height % 8;
 		var width = bmp.Width - bmp.Width % 8;
 		var matrix = new Matrix(height, width);
-
+        
 		for (var j = 0; j < height; j++)
 		{
 			for (var i = 0; i < width; i++)

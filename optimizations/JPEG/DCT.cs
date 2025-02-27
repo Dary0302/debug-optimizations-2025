@@ -37,8 +37,8 @@ public class DCT
         return channelFreqs;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static double Alpha(int u) => (u == 0) ? 1 / Math.Sqrt(2) : 1;
+    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static double Alpha(int u) => u == 0 ? 1 / Math.Sqrt(2) : 1;
     
     public static double[,] PrecomputeCosTable(int size)
     {
@@ -47,7 +47,7 @@ public class DCT
         {
             for (var u = 0; u < size; u++)
             {
-                table[x, u] = Math.Cos(((2.0 * x + 1.0) * u * Math.PI) / (2.0 * size));
+                table[x, u] = Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * size));
             }
         }
         return table;
@@ -67,7 +67,7 @@ public class DCT
         });
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ProcessBlock(
         double[,] input,
         double[,] output,
