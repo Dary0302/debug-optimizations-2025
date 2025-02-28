@@ -6,7 +6,7 @@ namespace JPEG;
 
 public class DCT
 {
-    public static double[,] DCT2D(double[,] channel, double[,] cosTable, int blockSize)
+    public static double[,] DCT2D(float[,] channel, float[,] cosTable, int blockSize)
     {
         var channelFreqs = new double[blockSize, blockSize];
 
@@ -37,23 +37,28 @@ public class DCT
         return channelFreqs;
     }
 
-    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static double Alpha(int u) => u == 0 ? 1 / Math.Sqrt(2) : 1;
-    
-    public static double[,] PrecomputeCosTable(int size)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float Alpha(int u)
     {
-        var table = new double[size, size];
+        if (u == 0)
+            return 0.70710678118654752440084436210485f;
+        return 1;
+    }
+    
+    public static float[,] PrecomputeCosTable(int size)
+    {
+        var table = new float[size, size];
         for (var x = 0; x < size; x++)
         {
             for (var u = 0; u < size; u++)
             {
-                table[x, u] = Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * size));
+                table[x, u] = (float)Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * size));
             }
         }
         return table;
     }
 
-    public static void PDCT2D(double[,] input, double[,] output, double[,] cosTable, int blockSize)
+    public static void PDCT2D(float[,] input, float[,] output, float[,] cosTable, int blockSize)
     {
         var width = input.GetLength(0);
         var height = input.GetLength(1);
@@ -69,14 +74,14 @@ public class DCT
 
     //[MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ProcessBlock(
-        double[,] input,
-        double[,] output,
+        float[,] input,
+        float[,] output,
         int offsetX,
         int offsetY,
         int blockSize,
-        double[,] cosTable)
+        float[,] cosTable)
     {
-        var beta = 1.0 / blockSize + 1.0 / blockSize;
+        var beta = 2f * (1f / blockSize);
 
         for (var u = 0; u < blockSize; u++)
         {
@@ -85,7 +90,7 @@ public class DCT
             {
                 var alphaV = Alpha(v);
 
-                var sum = 0d;
+                var sum = 0f;
                 for (var x = 0; x < blockSize; x++)
                 {
                     for (var y = 0; y < blockSize; y++)
