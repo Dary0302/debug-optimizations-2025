@@ -14,7 +14,7 @@ public class DCT
         {
             for (var v = 0; v < blockSize; v++)
             {
-                double sum = 0;
+                var sum = 0f;
 
                 for (var x = 0; x < blockSize; x++)
                 {
@@ -27,8 +27,8 @@ public class DCT
                     }
                 }
 
-                var alphaU = u == 0 ? 1.0 / Math.Sqrt(2) : 1.0;
-                var alphaV = v == 0 ? 1.0 / Math.Sqrt(2) : 1.0;
+                var alphaU = Alpha(u);
+                var alphaV = Alpha(v);
 
                 channelFreqs[u, v] = 0.25 * alphaU * alphaV * sum; // 0.25 это (1/4), сокращает коэффициенты сразу
             }
@@ -37,14 +37,6 @@ public class DCT
         return channelFreqs;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float Alpha(int u)
-    {
-        if (u == 0)
-            return 0.70710678118654752440084436210485f;
-        return 1;
-    }
-    
     public static float[,] PrecomputeCosTable(int size)
     {
         var table = new float[size, size];
@@ -58,7 +50,7 @@ public class DCT
         return table;
     }
 
-    public static void PDCT2D(float[,] input, float[,] output, float[,] cosTable, int blockSize)
+    public static void IDCT2D(float[,] input, float[,] output, float[,] cosTable, int blockSize)
     {
         var width = input.GetLength(0);
         var height = input.GetLength(1);
@@ -83,26 +75,34 @@ public class DCT
     {
         var beta = 2f * (1f / blockSize);
 
-        for (var u = 0; u < blockSize; u++)
+        for (var x = 0; x < blockSize; x++)
         {
-            var alphaU = Alpha(u);
-            for (var v = 0; v < blockSize; v++)
+            for (var y = 0; y < blockSize; y++)
             {
-                var alphaV = Alpha(v);
-
                 var sum = 0f;
-                for (var x = 0; x < blockSize; x++)
+                for (var u = 0; u < blockSize; u++)
                 {
-                    for (var y = 0; y < blockSize; y++)
+                    var alphaU = Alpha(u);
+                    for (var v = 0; v < blockSize; v++)
                     {
-                        sum += input[offsetX + x, offsetY + y] *
+                        var alphaV = Alpha(v);
+                        sum += alphaU *
+                            alphaV *
+                            input[offsetX + u, offsetY + v] *
                             cosTable[x, u] *
                             cosTable[y, v];
                     }
                 }
-
-                output[offsetX + u, offsetY + v] = sum * beta * alphaU * alphaV;
+                output[offsetX + x, offsetY + y] = sum * beta;
             }
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float Alpha(int u)
+    {
+        if (u == 0)
+            return 0.70710678118654752440084436210485f;
+        return 1;
     }
 }

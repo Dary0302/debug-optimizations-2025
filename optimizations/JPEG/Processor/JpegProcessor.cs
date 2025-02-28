@@ -84,7 +84,7 @@ public class JpegProcessor : IJpegProcessor
 						var quantizedFreqs = ZigZagUnScan(quantizedBytes);
 						var channelFreqs = DeQuantize(quantizedFreqs, image.Quality);
 
-						DCT.PDCT2D(channelFreqs, channel, CosTable, DCTSize);
+						DCT.IDCT2D(channelFreqs, channel, CosTable, DCTSize);
 						ShiftMatrixValues(channel, 128);
 					}
 
@@ -113,8 +113,8 @@ public class JpegProcessor : IJpegProcessor
 		var width = a.GetLength(1);
 
 		for (var y = 0; y < height; y++)
-		for (var x = 0; x < width; x++)
-			matrix.Pixels[yOffset + y, xOffset + x] = new Pixel(a[y, x], b[y, x], c[y, x], format);
+            for (var x = 0; x < width; x++)
+                matrix.Pixels[yOffset + y, xOffset + x] = new Pixel(a[y, x], b[y, x], c[y, x], format);
 	}
 
 	private static float[,] GetSubMatrix(Matrix matrix, int yOffset, int yLength, int xOffset, int xLength,
@@ -122,8 +122,8 @@ public class JpegProcessor : IJpegProcessor
 	{
 		var result = new float[yLength, xLength];
 		for (var j = 0; j < yLength; j++)
-		for (var i = 0; i < xLength; i++)
-			result[j, i] = componentSelector(matrix.Pixels[yOffset + j, xOffset + i]);
+            for (var i = 0; i < xLength; i++)
+                result[j, i] = componentSelector(matrix.Pixels[yOffset + j, xOffset + i]);
 		return result;
 	}
 
