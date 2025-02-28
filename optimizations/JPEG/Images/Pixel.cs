@@ -1,24 +1,21 @@
 ﻿using System;
-using System.Linq;
 
 namespace JPEG.Images;
 
-public readonly struct Pixel
+public struct Pixel
 {
-    // Переделать в byte
-
     public float R { get; }
     public float G { get; }
     public float B { get; }
     public float Y { get; }
     public float Cb { get; }
     public float Cr { get; }
-    
+
     public Pixel(float firstComponent, float secondComponent, float thirdComponent, PixelFormat pixelFormat)
     {
-        if (!new[] { PixelFormat.RGB, PixelFormat.YCbCr }.Contains(pixelFormat))
+        if (pixelFormat is not PixelFormat.RGB and not PixelFormat.YCbCr)
             throw new FormatException("Unknown pixel format: " + pixelFormat);
-        
+
         if (pixelFormat == PixelFormat.RGB)
         {
             R = firstComponent;
@@ -29,8 +26,7 @@ public readonly struct Pixel
             Cb = 128.0f + (-37.945f * R - 74.494f * G + 112.439f * B) / 256.0f;
             Cr = 128.0f + (112.439f * R - 94.154f * G - 18.285f * B) / 256.0f;
         }
-
-        if (pixelFormat == PixelFormat.YCbCr)
+        else if (pixelFormat == PixelFormat.YCbCr)
         {
             Y = firstComponent;
             Cb = secondComponent;

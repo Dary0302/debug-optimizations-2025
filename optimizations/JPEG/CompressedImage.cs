@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -16,91 +15,57 @@ public class CompressedImage
 	public long BitsCount { get; set; }
 	public byte[] CompressedBytes { get; set; }
 
-	public void Save(string path)
-	{
-		using(var sw = new FileStream(path, FileMode.Create))
-		{
-			byte[] buffer;
+    public void Save(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        using var writer = new BinaryWriter(fs);
 
-			buffer = BitConverter.GetBytes(Width);
-			sw.Write(buffer, 0, buffer.Length);
+        writer.Write(Width);
+        writer.Write(Height);
+        writer.Write(Quality);
 
-			buffer = BitConverter.GetBytes(Height);
-			sw.Write(buffer, 0, buffer.Length);
+        writer.Write(DecodeTable.Count);
+        foreach (var kvp in DecodeTable)
+        {
+            writer.Write(kvp.Key.Bits);
+            writer.Write(kvp.Key.BitsCount);
+            writer.Write(kvp.Value);
+        }
 
-			buffer = BitConverter.GetBytes(Quality);
-			sw.Write(buffer, 0, buffer.Length);
+        writer.Write(BitsCount);
+        writer.Write(CompressedBytes.Length);
+        writer.Write(CompressedBytes);
+    }
 
-			buffer = BitConverter.GetBytes(DecodeTable.Count);
-			sw.Write(buffer, 0, buffer.Length);
 
-			foreach(var kvp in DecodeTable)
-			{
-				var bits = kvp.Key.Bits;
-				buffer = BitConverter.GetBytes(bits);
-				sw.Write(buffer, 0, buffer.Length);
+    public static CompressedImage Load(string path)
+    {
+        var result = new CompressedImage();
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var reader = new BinaryReader(fs);
 
-				var bitsCount = kvp.Key.BitsCount;
-				buffer = BitConverter.GetBytes(bitsCount);
-				sw.Write(buffer, 0, buffer.Length);
+        result.Width = reader.ReadInt32();
+        result.Height = reader.ReadInt32();
+        result.Quality = reader.ReadInt32();
 
-				var mappedByte = kvp.Value;
-				sw.WriteByte(mappedByte);
-			}
+        var decodeTableSize = reader.ReadInt32();
+        result.DecodeTable = new Dictionary<BitsWithLength, byte>(decodeTableSize, new BitsWithLength.Comparer());
 
-			buffer = BitConverter.GetBytes(BitsCount);
-			sw.Write(buffer, 0, buffer.Length);
+        for (var i = 0; i < decodeTableSize; i++)
+        {
+            var bits = reader.ReadInt32();
+            var bitsCount = reader.ReadInt32();
+            var mappedByte = reader.ReadByte();
 
-			buffer = BitConverter.GetBytes(CompressedBytes.Length);
-			sw.Write(buffer, 0, buffer.Length);
+            result.DecodeTable[new BitsWithLength { Bits = bits, BitsCount = bitsCount }] = mappedByte;
+        }
 
-			sw.Write(CompressedBytes, 0, CompressedBytes.Length);
-		}
-	}
+        result.BitsCount = reader.ReadInt64();
 
-	public static CompressedImage Load(string path)
-	{
-		var result = new CompressedImage();
-		using(var sr = new FileStream(path, FileMode.Open))
-		{
-			byte[] buffer = new byte[8];
+        var compressedBytesCount = reader.ReadInt32();
+        result.CompressedBytes = reader.ReadBytes(compressedBytesCount);
 
-			sr.Read(buffer, 0, 4);
-			result.Width = BitConverter.ToInt32(buffer, 0);
+        return result;
+    }
 
-			sr.Read(buffer, 0, 4);
-			result.Height = BitConverter.ToInt32(buffer, 0);
-
-			sr.Read(buffer, 0, 4);
-			result.Quality = BitConverter.ToInt32(buffer, 0);
-
-			sr.Read(buffer, 0, 4);
-			var decodeTableSize = BitConverter.ToInt32(buffer, 0);
-			result.DecodeTable = new Dictionary<BitsWithLength, byte>(decodeTableSize, new BitsWithLength.Comparer());
-
-			for(int i = 0; i < decodeTableSize; i++)
-			{
-				sr.Read(buffer, 0, 4);
-				var bits = BitConverter.ToInt32(buffer, 0);
-
-				sr.Read(buffer, 0, 4);
-				var bitsCount = BitConverter.ToInt32(buffer, 0);
-
-				var mappedByte = (byte)sr.ReadByte();
-				result.DecodeTable[new BitsWithLength {Bits = bits, BitsCount = bitsCount}] = mappedByte;
-			}
-
-			sr.Read(buffer, 0, 8);
-			result.BitsCount = BitConverter.ToInt64(buffer, 0);
-
-			sr.Read(buffer, 0, 4);
-			var compressedBytesCount = BitConverter.ToInt32(buffer, 0);
-
-			result.CompressedBytes = new byte[compressedBytesCount];
-			var totalRead = 0;
-			while(totalRead < compressedBytesCount)
-				totalRead += sr.Read(result.CompressedBytes, totalRead, compressedBytesCount - totalRead);
-		}
-		return result;
-	}
 }
