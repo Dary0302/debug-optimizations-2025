@@ -13,7 +13,7 @@ public class JpegProcessor : IJpegProcessor
 	public static readonly JpegProcessor Init = new();
     private static readonly float[,] CosTable = DCT.PrecomputeCosTable(DCTSize);
 	public const int CompressionQuality = 70;
-	private const int DCTSize = 8;
+	private const byte DCTSize = 8;
 
 	public void Compress(string imagePath, string compressedImagePath)
 	{
@@ -150,7 +150,7 @@ public class JpegProcessor : IJpegProcessor
 		};
 	}
 
-	private static byte[,] ZigZagUnScan(IReadOnlyList<byte> quantizedBytes)
+	private static byte[,] ZigZagUnScan(byte[] quantizedBytes)
 	{
 		return new[,]
 		{
@@ -189,14 +189,14 @@ public class JpegProcessor : IJpegProcessor
 		};
 	}
 
-	private static byte[,] Quantize(double[,] channelFreqs, int quality)
+	private static byte[,] Quantize(float[,] channelFreqs, int quality)
 	{
 		var result = new byte[channelFreqs.GetLength(0), channelFreqs.GetLength(1)];
 
 		var quantizationMatrix = GetQuantizationMatrix(quality);
-		for (int y = 0; y < channelFreqs.GetLength(0); y++)
+		for (var y = 0; y < channelFreqs.GetLength(0); y++)
 		{
-			for (int x = 0; x < channelFreqs.GetLength(1); x++)
+			for (var x = 0; x < channelFreqs.GetLength(1); x++)
 			{
 				result[y, x] = (byte)(channelFreqs[y, x] / quantizationMatrix[y, x]);
 			}

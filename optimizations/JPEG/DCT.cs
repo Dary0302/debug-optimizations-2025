@@ -6,43 +6,56 @@ namespace JPEG;
 
 public class DCT
 {
-    public static double[,] DCT2D(float[,] channel, float[,] cosTable, int blockSize)
+    public static float[,] DCT2D(float[,] channel, float[,] cosTable, byte blockSize)
     {
-        var channelFreqs = new double[blockSize, blockSize];
+        var beta = 1f / blockSize * 1.9f;
+        var channelFreqs = new float[blockSize, blockSize];
 
-        for (var u = 0; u < blockSize; u++)
+        var temp = new float[blockSize, blockSize];
+
+        Parallel.For(0, blockSize, y =>
         {
-            for (var v = 0; v < blockSize; v++)
+            for (byte u = 0; u < blockSize; u++)
             {
-                var sum = 0f;
+                var alphaU = Alpha(u);
+                var sum = 0.0f;
 
-                for (var x = 0; x < blockSize; x++)
+                for (byte x = 0; x < blockSize; x++)
                 {
-                    for (var y = 0; y < blockSize; y++)
-                    {
-                        var pixel = channel[x, y];
-                        sum += pixel *
-                            cosTable[x, u] *
-                            cosTable[y, v];
-                    }
+                    sum += channel[x, y] * cosTable[x, u];
                 }
 
-                var alphaU = Alpha(u);
+                temp[u, y] = sum * alphaU;
+            }
+        });
+
+        Parallel.For(0, blockSize, u =>
+        {
+            for (byte v = 0; v < blockSize; v++)
+            {
                 var alphaV = Alpha(v);
 
-                channelFreqs[u, v] = 0.25 * alphaU * alphaV * sum; // 0.25 это (1/4), сокращает коэффициенты сразу
+                var sum = 0.0f;
+
+                for (byte y = 0; y < blockSize; y++)
+                {
+                    sum += temp[u, y] * cosTable[y, v];
+                }
+
+                channelFreqs[u, v] = sum * beta * alphaV;
             }
-        }
+        });
 
         return channelFreqs;
     }
 
-    public static float[,] PrecomputeCosTable(int size)
+
+    public static float[,] PrecomputeCosTable(byte size)
     {
         var table = new float[size, size];
-        for (var x = 0; x < size; x++)
+        for (byte x = 0; x < size; x++)
         {
-            for (var u = 0; u < size; u++)
+            for (byte u = 0; u < size; u++)
             {
                 table[x, u] = (float)Math.Cos((2.0 * x + 1.0) * u * Math.PI / (2.0 * size));
             }
@@ -50,53 +63,42 @@ public class DCT
         return table;
     }
 
-    public static void IDCT2D(float[,] input, float[,] output, float[,] cosTable, int blockSize)
+    public static void IDCT2D(float[,] input, float[,] output, float[,] cosTable, byte blockSize)
+{
+    var beta = 1f / blockSize * 1.4f; 
+    var temp = new float[blockSize, blockSize];
+
+    Parallel.For(0, blockSize, x =>
     {
-        var width = input.GetLength(0);
-        var height = input.GetLength(1);
-
-        Parallel.For(0, width / blockSize, blockX =>
+        for (byte v = 0; v < blockSize; v++)
         {
-            for (var blockY = 0; blockY < height / blockSize; blockY++)
-            {
-                ProcessBlock(input, output, blockX * blockSize, blockY * blockSize, blockSize, cosTable);
-            }
-        });
-    }
+            var sum = 0.0f;
 
-    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ProcessBlock(
-        float[,] input,
-        float[,] output,
-        int offsetX,
-        int offsetY,
-        int blockSize,
-        float[,] cosTable)
-    {
-        var beta = 2f * (1f / blockSize);
-
-        for (var x = 0; x < blockSize; x++)
-        {
-            for (var y = 0; y < blockSize; y++)
+            for (byte u = 0; u < blockSize; u++)
             {
-                var sum = 0f;
-                for (var u = 0; u < blockSize; u++)
-                {
-                    var alphaU = Alpha(u);
-                    for (var v = 0; v < blockSize; v++)
-                    {
-                        var alphaV = Alpha(v);
-                        sum += alphaU *
-                            alphaV *
-                            input[offsetX + u, offsetY + v] *
-                            cosTable[x, u] *
-                            cosTable[y, v];
-                    }
-                }
-                output[offsetX + x, offsetY + y] = sum * beta;
+                var alphaU = Alpha(u);
+                sum += input[u, v] * alphaU * cosTable[x, u];
             }
+
+            temp[x, v] = sum;
         }
-    }
+    });
+
+    Parallel.For(0, blockSize, x =>
+    {
+        for (byte y = 0; y < blockSize; y++)
+        {
+            var sum = 0.0f;
+
+            for (byte v = 0; v < blockSize; v++)
+            {
+                sum += temp[x, v] * cosTable[y, v];
+            }
+
+            output[x, y] = sum * beta;
+        }
+    });
+}
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float Alpha(int u)
